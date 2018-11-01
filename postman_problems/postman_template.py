@@ -17,8 +17,20 @@ def get_args():
     # CPP optimization
     # ---------------------------------------------------------------
 
+    parser.add_argument('--graphml',
+                        required=False,
+                        type=str,
+                        help='Filename of graphml file.'
+                             'Expected to be a standard graphml file readable by networkx.'
+                             'Optionally the graphml nodes can contain lat/long attributes.')
+
+    parser.add_argument('--max_distance',
+                        required=False,
+                        type=int,
+                        help='Distance filter for CPP algorithm.')
+
     parser.add_argument('--edgelist',
-                        required=True,
+                        required=False,
                         type=str,
                         help='Filename of edgelist.'
                              'Expected to be comma delimited text file readable with pandas.read_csv'
@@ -135,9 +147,13 @@ def generic_postman(postman_type):
     logger = logging.getLogger(__name__)
 
     logger.info('Solving the {} postman problem..'.format(postman_type))
-    circuit, graph = postman_algo(edgelist_filename=args.edgelist,
+    if args.graphml is not None:
+        edgelist = args.graphml
+    else:
+        edgelist = args.edgelist
+    circuit, graph = postman_algo(edgelist_filename=edgelist,
                                        start_node=args.start_node,
-                                       edge_weight=args.edge_weight)
+                                       edge_weight=args.edge_weight, graphml=True, max_distance=args.max_distance)
 
     logger.info('Solution:')
     for edge in circuit:

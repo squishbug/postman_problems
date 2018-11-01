@@ -1,6 +1,7 @@
 import warnings
 import networkx as nx
 import pandas as pd
+import numpy as np
 
 
 def read_edgelist(edgelist_filename, keep_optional=False):
@@ -101,6 +102,42 @@ def get_even_nodes(graph):
 
     """
     return _get_even_or_odd_nodes(graph, 0)
+
+def great_circle_vec(lat1, lng1, lat2, lng2, earth_radius=6371009): # meters
+    phi1 = np.deg2rad(90 - lat1)
+    phi2 = np.deg2rad(90 - lat2)
+
+    theta1 = np.deg2rad(lng1)
+    theta2 = np.deg2rad(lng2)
+
+    cos = (np.sin(phi1) * np.sin(phi2) * np.cos(theta1 - theta2) + np.cos(phi1) * np.cos(phi2))
+    arc = np.arccos(cos)
+
+    distance = arc * earth_radius
+    return distance
+
+def filter_by_haversine_distance(graph, pairs, max_distance=100):
+    """
+    Filter node pairs by a max distance, discard any pairs too far apart
+
+    Args:
+        graph (networkx graph)
+        pairs (list[2tuple]): List of length 2 tuples containing node pairs
+        max_distance (str): Defines the max distance node pairs are allowed to be apart
+
+    Returns:
+        list[2tuple]: The input pairs filtered by a max distance constraint.
+    """
+    if max_distance is None:
+        return pairs
+    else:    
+        filtered_list = []
+        for pair in pairs:
+            if great_circle_vec(graph.nodes[pair[0]]['x'], graph.nodes[pair[0]]['y'], graph.nodes[pair[1]]['x'], graph.nodes[pair[1]]['y']) < max_distance:
+                filtered_list.append(pair)
+
+        print len(filtered_list), 'down from', len(pairs)
+        return filtered_list
 
 
 def get_shortest_paths_distances(graph, pairs, edge_weight_name='distance'):
@@ -257,4 +294,3 @@ def assert_graph_is_connected(graph):
                                                         "this implementation of the RPP here which generalizes to the " \
                                                         "CPP."
     return True
-
