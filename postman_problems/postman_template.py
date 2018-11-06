@@ -153,11 +153,11 @@ def generic_postman(postman_type):
         edgelist = args.edgelist
     circuit, graph = postman_algo(edgelist_filename=edgelist,
                                        start_node=args.start_node,
-                                       edge_weight=args.edge_weight, graphml=True, max_distance=args.max_distance)
+                                       edge_weight=args.edge_weight, graphml=args.graphml is not None, max_distance=args.max_distance)
 
-    logger.info('Solution:')
-    for edge in circuit:
-        logger.info(edge)
+    # logger.info('Solution:')
+    # for edge in circuit:
+    #     logger.info(edge)
 
     logger.info('Solution summary stats:')
     for k, v in calculate_postman_solution_stats(circuit).items():
