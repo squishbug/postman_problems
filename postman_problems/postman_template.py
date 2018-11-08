@@ -27,7 +27,13 @@ def get_args():
     parser.add_argument('--max_distance',
                         required=False,
                         type=int,
-                        help='Distance filter for CPP algorithm.')
+                        help = 'Distance filter for CPP algorithm.')
+    
+    parser.add_argument('--max_degree_connect',
+                        required=False,
+                        type=int,
+                        help = 'The max degree required for nodes to be optionally fully connected for RPP.'
+                               'Set to -1 to fully connect every node.')
 
     parser.add_argument('--edgelist',
                         required=False,
@@ -153,7 +159,8 @@ def generic_postman(postman_type):
         edgelist = args.edgelist
     circuit, graph = postman_algo(edgelist_filename=edgelist,
                                        start_node=args.start_node,
-                                       edge_weight=args.edge_weight, graphml=args.graphml is not None, max_distance=args.max_distance)
+                                       edge_weight=args.edge_weight, graphml=args.graphml is not None,
+                                       max_distance=args.max_distance, max_degree_connect=args.max_degree_connect)
 
     # logger.info('Solution:')
     # for edge in circuit:
