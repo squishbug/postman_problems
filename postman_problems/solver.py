@@ -134,7 +134,9 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     logger_cpp.info('get augmenting path for odd nodes')
     odd_nodes = get_odd_nodes(g)
     odd_node_pairs = list(itertools.combinations(odd_nodes, 2))
-    odd_node_pairs = filter_by_haversine_distance(g, odd_node_pairs, max_distance=max_distance)
+
+    # 'x' and 'y' is not in the generated graphml file, so this filtering is not supported until x and y is added
+    # odd_node_pairs = filter_by_haversine_distance(g, odd_node_pairs, max_distance=max_distance)
 
     start = time.time()
     odd_node_pairs_shortest_paths = get_shortest_paths_distances(g, odd_node_pairs, edge_weight)
