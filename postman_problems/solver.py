@@ -90,7 +90,7 @@ def rpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     logger_rpp.info('get eulerian circuit route')
     circuit = list(create_eulerian_circuit(g_aug, g_full, start_node))
     end = time.time()
-    print 'matching and augment time:', end - start
+    print('matching and augment time:', end - start)
     return circuit, g_full
 
 
@@ -148,10 +148,10 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     logger_cpp.info('add the min weight matching edges to g')
     g_aug = add_augmenting_path_to_graph(g, odd_matching)
 
-    print len(get_odd_nodes(g)), ' odd nodes, now', len(get_odd_nodes(g_aug)), nx.is_connected(g_aug)
+    print(len(get_odd_nodes(g)), ' odd nodes, now', len(get_odd_nodes(g_aug)), nx.is_connected(g_aug))
     logger_cpp.info('get eulerian circuit route')
     circuit = list(create_eulerian_circuit(g_aug, g, start_node))
     end = time.time()
-    print 'matching and augment time:', end - start
+    print('matching and augment time:', end - start)
 
     return circuit, g

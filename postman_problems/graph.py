@@ -136,7 +136,7 @@ def filter_by_haversine_distance(graph, pairs, max_distance=100):
             if great_circle_vec(graph.nodes[pair[0]]['x'], graph.nodes[pair[0]]['y'], graph.nodes[pair[1]]['x'], graph.nodes[pair[1]]['y']) < max_distance:
                 filtered_list.append(pair)
 
-        print len(filtered_list), 'down from', len(pairs)
+        print(len(filtered_list), 'down from', len(pairs))
         return filtered_list
 
 
