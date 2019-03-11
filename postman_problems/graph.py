@@ -60,6 +60,36 @@ def create_networkx_graph_from_edgelist(edgelist, edge_id='id'):
     return g
 
 
+def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
+    g_full = nx.read_graphml(filename)
+    g_full = nx.MultiGraph(g_full) # convert Graph to MultiGraph (adds "keys")
+
+    # every edge is "required"
+    for n1,n2,k in g_full.edges(keys=True):
+        g_full.edges[(n1,n2,k)]["required"] = 1
+        g_full.edges[(n1,n2,k)][edge_weight] = float(g_full.edges[(n1,n2,k)][edge_weight])
+
+    # add optional edges
+    if max_degree_connect is not None:
+        # get nodes with degree < max_degree_connect
+        if max_degree_connect==-1:
+            nodes = list(g_full.nodes())
+        else:
+            nodes = [node for (node, degree) in g_full.degree() if degree <= max_degree_connect]
+
+        # connect all indentified nodes to each other, all-to-all-style
+        pairs = itertools.combinations(nodes, 2)
+        for pair in pairs:
+            dist = great_circle_vec(
+                float(g_full.nodes[pair[0]]['x']),
+                float(g_full.nodes[pair[0]]['y']),
+                float(g_full.nodes[pair[1]]['x']),
+                float(g_fulls.nodes[pair[1]]['y']))
+            g_full.add_edge(pair[0], pair[0], required=0, distance=dist)
+
+    return g_full;
+
+
 def _get_even_or_odd_nodes(graph, mod):
     """
     Helper function for get_even_nodes.  Given a networkx object, return names of the odd or even nodes
@@ -130,13 +160,13 @@ def filter_by_haversine_distance(graph, pairs, max_distance=100):
     """
     if max_distance is None:
         return pairs
-    else:    
+    else:
         filtered_list = []
         for pair in pairs:
             if great_circle_vec(graph.nodes[pair[0]]['x'], graph.nodes[pair[0]]['y'], graph.nodes[pair[1]]['x'], graph.nodes[pair[1]]['y']) < max_distance:
                 filtered_list.append(pair)
 
-        print len(filtered_list), 'down from', len(pairs)
+        print(len(filtered_list), 'down from', len(pairs))
         return filtered_list
 
 
@@ -216,7 +246,7 @@ def add_augmenting_path_to_graph(graph, min_weight_pairs, edge_weight_name='weig
     return graph_aug
 
 
-def create_eulerian_circuit(graph_augmented, graph_original, start_node=None):
+def create_eulerian_circuit(graph_augmented, graph_original, start_node=None, edge_weight='distance'):
     """
     networkx.eulerian_circuit only returns the order in which we hit each node.  It does not return the attributes of the
     edges needed to complete the circuit.  This is necessary for the postman problem where we need to keep track of which
@@ -245,7 +275,7 @@ def create_eulerian_circuit(graph_augmented, graph_original, start_node=None):
             for edge_aug in list(zip(aug_path[:-1], aug_path[1:])):
                 # find edge with shortest distance (if there are two parallel edges between the same nodes)
                 edge_aug_dict = graph_original[edge_aug[0]][edge_aug[1]]
-                edge_key = min(edge_aug_dict.keys(), key=(lambda k: edge_aug_dict[k]['distance']))  # index with min distance
+                edge_key = min(edge_aug_dict.keys(), key=(lambda k: edge_aug_dict[k][edge_weight]))  # index with min distance
                 edge_aug_shortest = edge_aug_dict[edge_key]
                 edge_aug_shortest['augmented'] = True
                 edge_aug_shortest['id'] = edge_aug_dict[edge_key]['id']

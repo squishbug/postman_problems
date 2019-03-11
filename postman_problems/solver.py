@@ -2,8 +2,10 @@ import itertools
 import logging
 import networkx as nx
 import time
+import warnings
 
-from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, create_required_graph, \
+#from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, create_required_graph, \
+from graph import read_edgelist, create_networkx_graph_from_edgelist, read_graphml, create_required_graph, \
     assert_graph_is_connected, get_odd_nodes, get_shortest_paths_distances, create_complete_graph, dedupe_matching, \
     add_augmenting_path_to_graph, create_eulerian_circuit, filter_by_haversine_distance, great_circle_vec
 
@@ -12,7 +14,7 @@ logger_rpp = logging.getLogger('{0}.{1}'.format(__name__, 'rpp'))
 logger_cpp = logging.getLogger('{0}.{1}'.format(__name__, 'cpp'))
 
 
-def rpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=False, graphml=False, max_distance=None, max_degree_connect=None):
+def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose=False, graphml=False, max_distance=None, max_degree_connect=None, g_full=None):
     """
     Solving the RPP from beginning (load network data) to end (finding optimal route).  This optimization makes a
      relatively strong assumption: the starting graph must stay a connected graph when optional edges are removed.
@@ -23,6 +25,10 @@ def rpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
         start_node (str): name of starting node.  See cpp.py for more details
         edge_weight (str): name edge attribute that indicates distance to minimize in CPP
         verbose (boolean): log info messages?
+        graphml (boolean): is edgelist filename a in graphml format?
+        max_distance (double): NOT IMPLEMENTED
+        max_degree_connect (int): min degree of a node in the full graph -- nodes with smaller degree are connected with all-to-all optional edges. Use -1 for all-to-all graph.
+        g_full (networkx multigraph): pre-loaded networkx MultiGraph. Either g_full or edgelist_filename must be specified. If both are given, filename will be used.
 
     Returns:
         tuple(list[tuple(str, str, dict)], networkx.MultiGraph]:
@@ -35,40 +41,59 @@ def rpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
 
     logger_rpp.disabled = not verbose
 
-    logger_rpp.info('read edgelist')
-    if graphml:
-        g = nx.read_graphml(edgelist_filename)
+    logger_rpp.info('initialize full graph')
 
-        # TODO this is hacky but it works. CPP bugs out when reading g directly, but going through the parsed file works
-        parsed_filename = edgelist_filename + '_parsed'
-        outfile = open(parsed_filename, 'w')
-        outfile.write('node1,node2,required,distance\n')
-        for edge in g.edges(data=True):
-            outfile.write(str(edge[0]) + ',' + str(edge[1]) + ',1,' + str(edge[2]['length']) + '\n')
+    reset_ids = False
 
-        # Fully connect nodes with optional edges
-        if max_degree_connect is not None:
-            if max_degree_connect == -1:
-                nodes = list(g.nodes)
+    if edgelist_filename is not None:
+        # edgelist filename is given - load graph from file
+
+        if graphml:
+            # read in the graph
+            g_full = read_graphml(edgelist_filename, edge_weight, max_degree_connect)
+
+            # make sure edge id exists and is unique
+            shared_keys = set.intersection(*[set(z.keys()) for x,y,z in list(g_full.edges(data=True))])
+            if 'id' not in shared_keys:
+                reset_ids = True
             else:
-                nodes = [node for (node, degree) in g.degree() if degree <= max_degree_connect]
+                # id is already specified - ensure that it is unique
+                if len({edg[3]['id'] for edg in g_full.edges(keys=True, data=True)}) != g_full.number_of_edges():
+                    warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
+                                  "Replacing id field with uniquely defined values.")
+                    #raise ValueError("If id is specified on edges of g_full it must be unique!")
+                    reset_ids = True
 
-            pairs = itertools.combinations(nodes, 2)
-            for pair in pairs:
-                dist = great_circle_vec(
-                    float(g.nodes[pair[0]]['x']),
-                    float(g.nodes[pair[0]]['y']),
-                    float(g.nodes[pair[1]]['x']),
-                    float(g.nodes[pair[1]]['y']))
-                outfile.write(
-                    str(pair[0]) + ',' + str(pair[1]) + ',0,' + str(dist) + '\n')
+        else:
+            # regular csv file format...
+            el = read_edgelist(edgelist_filename, keep_optional=True)
+            g_full = create_networkx_graph_from_edgelist(el)
+    elif g_full is None:
+        # none of edgelist filename or g_full is given - no graph specified
+        raise TypeError("One of edgelist_filename or g_full must be given!")
+    else:
+        # use g_full - must ensure that format matches the expected format
+        g_full = nx.MultiGraph(g_full)
+        # check for all needed fields - if id is not set it will be set manually
+        shared_keys = set.intersection(*[set(z.keys()) for x,y,z in list(g_full.edges(data=True))])
+        if not all([x in shared_keys for x in {'required',edge_weight}]):
+            raise ValueError("g_full must include values for 'required' and '{}' for every edge".format(edge_weight))
+        if 'id' not in shared_keys:
+            reset_ids = True
+        else:
+            # id is already specified - ensure that it is unique
+            warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
+                          "Replacing id field with uniquely defined values.")
+            #raise ValueError("If id is specified on edges of g_full it must be unique!")
+            reset_ids = True
 
-        outfile.close()
-        edgelist_filename = parsed_filename
-    el = read_edgelist(edgelist_filename, keep_optional=True)
+    # if needed, create new id
+    if reset_ids:
+        for ii, edg in enumerate(g_full.edges(keys=True)):
+            g_full.edges[edg]['id'] = str(ii)
 
-    logger_rpp.info('create full and required graph')
-    g_full = create_networkx_graph_from_edgelist(el)
+
+    logger_rpp.info('create required graph')
     g_req = create_required_graph(g_full)
     assert_graph_is_connected(g_req)
 
@@ -88,13 +113,13 @@ def rpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     g_aug = add_augmenting_path_to_graph(g_req, odd_matching)
 
     logger_rpp.info('get eulerian circuit route')
-    circuit = list(create_eulerian_circuit(g_aug, g_full, start_node))
+    circuit = list(create_eulerian_circuit(g_aug, g_full, start_node, edge_weight=edge_weight))
     end = time.time()
-    print 'matching and augment time:', end - start
+    print('matching and augment time:', end - start)
     return circuit, g_full
 
 
-def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=False, graphml=False, max_distance=None, max_degree_connect=0):
+def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=False, graphml=False, max_distance=None, max_degree_connect=0, g=None):
     """
     Solving the CPP from beginning (load network data) to end (finding optimal route).
     Can be run from command line with arguments from cpp.py, or from an interactive Python session (ex jupyter notebook)
@@ -104,6 +129,10 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
         start_node (str): name of starting node.  See cpp.py for more details
         edge_weight (str): name edge attribute that indicates distance to minimize in CPP
         verbose (boolean): log info messages?
+        graphml (boolean): is edgelist filename a in graphml format?
+        max_distance (double): NOT IMPLEMENTED
+        max_degree_connect (int): NOT IMPLEMENTED
+        g (networkx multigraph): pre-loaded networkx MultiGraph. Either g or edgelist_filename must be specified. If both are given, filename will be used.
 
     Returns:
         tuple(list[tuple(str, str, dict)], networkx.MultiGraph]:
@@ -115,21 +144,36 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     """
     logger_cpp.disabled = not verbose
 
-    logger_cpp.info('read edgelist and create base graph')
-    if graphml:
-        g = nx.read_graphml(edgelist_filename)
-
-        # TODO this is hacky but it works. CPP bugs out when reading g directly, but going through the parsed file works
-        parsed_filename = edgelist_filename + '_parsed'
-        outfile = open(parsed_filename, 'w')
-        outfile.write('node1,node2,required,distance\n')
-        for edge in g.edges(data=True):
-            outfile.write(str(edge[0]) + ',' + str(edge[1]) + ',1,' + str(edge[2]['length'])+'\n')
-        outfile.close()
-        edgelist_filename = parsed_filename
-
-    el = read_edgelist(edgelist_filename, keep_optional=False)
-    g = create_networkx_graph_from_edgelist(el)
+    logger_rpp.info('initialize graph')
+    if edgelist_filename is not None:
+        # edgelist filename is given - load graph from file
+        if graphml:
+            g = nx.read_graphml(edgelist_filename)
+            g = nx.MultiGraph(g) # convert Graph to MultiGraph (adds "keys")
+            # make sure edge weight is numeric
+            for edg in g.edges(keys=True):
+                g.edges[edg][edge_weight] = float(g.edges[edg][edge_weight])
+        else:
+            el = read_edgelist(edgelist_filename, keep_optional=False)
+            g = create_networkx_graph_from_edgelist(el)
+    elif g is None:
+        # none of edgelist filename or g is given - no graph specified
+        raise TypeError("One of edgelist_filename or g must be given!")
+    else:
+        # use g - must ensure that format matches the expected format
+        g = nx.MultiGraph(g)
+        # check for all needed fields - if id is not set it will be set manually
+        shared_keys = set.intersection(*[set(z.keys()) for x,y,z in list(g.edges(data=True))])
+        if edge_weight not in shared_keys:
+            raise ValueError("g must include value for '{}' for every edge".format(edge_weight))
+        if id not in shared_keys:
+            # create new id
+            for ii, edg in enumerate(g.edges(keys=True)):
+                g.edges[edg]['id'] = ii
+        else:
+            # id is already specified - ensure that it is unique
+            if len({edg[3]['id'] for edg in g.edges(keys=True, data=True)}) != g.number_of_edges():
+                raise ValueError("If id is specified on edges of g it must be unique!")
 
     logger_cpp.info('get augmenting path for odd nodes')
     odd_nodes = get_odd_nodes(g)
@@ -148,10 +192,10 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     logger_cpp.info('add the min weight matching edges to g')
     g_aug = add_augmenting_path_to_graph(g, odd_matching)
 
-    print len(get_odd_nodes(g)), ' odd nodes, now', len(get_odd_nodes(g_aug)), nx.is_connected(g_aug)
+    print(len(get_odd_nodes(g)), ' odd nodes, now', len(get_odd_nodes(g_aug)), nx.is_connected(g_aug))
     logger_cpp.info('get eulerian circuit route')
     circuit = list(create_eulerian_circuit(g_aug, g, start_node))
     end = time.time()
-    print 'matching and augment time:', end - start
+    print('matching and augment time:', end - start)
 
     return circuit, g
