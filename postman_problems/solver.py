@@ -116,6 +116,19 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
     circuit = list(create_eulerian_circuit(g_aug, g_full, start_node, edge_weight=edge_weight))
     end = time.time()
     print('matching and augment time:', end - start)
+
+    # Remove already visited nodes starting from the back (since we dont care about the "full circuit")
+    new_ending_idx = len(circuit) - 1;
+    for idx in range(0, len(circuit), 1):
+        end_offset_idx = len(circuit) - 1 - idx
+        if circuit[idx][0] == circuit[end_offset_idx][0] or circuit[idx][0] == circuit[end_offset_idx][1] or circuit[idx][1] == circuit[end_offset_idx][0] or circuit[idx][1] == circuit[end_offset_idx][1]:
+            new_ending_idx = end_offset_idx
+        else:
+            break
+    
+    circuit = circuit[idx+1:]
+    print('Removed', idx, 'edges from the circuit start')
+
     return circuit, g_full
 
 
@@ -197,5 +210,17 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     circuit = list(create_eulerian_circuit(g_aug, g, start_node))
     end = time.time()
     print('matching and augment time:', end - start)
+
+    # Remove already visited nodes starting from the back (since we dont care about the "full circuit")
+    new_ending_idx = len(circuit) - 1
+    for idx in range(0, len(circuit), 1):
+        end_offset_idx = len(circuit) - 1 - idx
+        if circuit[idx][0] == circuit[end_offset_idx][0] or circuit[idx][0] == circuit[end_offset_idx][1] or circuit[idx][1] == circuit[end_offset_idx][0] or circuit[idx][1] == circuit[end_offset_idx][1]:
+            new_ending_idx = end_offset_idx
+        else:
+            break
+
+    circuit = circuit[idx+1:]
+    print('Removed', idx, 'edges from the circuit start')
 
     return circuit, g
