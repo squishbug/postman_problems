@@ -61,7 +61,7 @@ def create_networkx_graph_from_edgelist(edgelist, edge_id='id'):
     return g
 
 
-def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
+def read_graphml(filename, edge_weight="length", max_degree_connect=None):
     g_full = nx.read_graphml(filename)
     g_full = nx.MultiGraph(g_full) # convert Graph to MultiGraph (adds "keys")
 
@@ -82,11 +82,11 @@ def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
         pairs = itertools.combinations(nodes, 2)
         for pair in pairs:
             dist = great_circle_vec(
-                float(g_full.nodes[pair[0]]['x']),
                 float(g_full.nodes[pair[0]]['y']),
-                float(g_full.nodes[pair[1]]['x']),
-                float(g_full.nodes[pair[1]]['y']))
-            g_full.add_edge(pair[0], pair[0], required=0, distance=dist)
+                float(g_full.nodes[pair[0]]['x']),
+                float(g_full.nodes[pair[1]]['y']),
+                float(g_full.nodes[pair[1]]['x']))
+            g_full.add_edge(pair[0], pair[1], required=0, length=dist)
 
     return g_full;
 
@@ -164,14 +164,14 @@ def filter_by_haversine_distance(graph, pairs, max_distance=100):
     else:
         filtered_list = []
         for pair in pairs:
-            if great_circle_vec(graph.nodes[pair[0]]['x'], graph.nodes[pair[0]]['y'], graph.nodes[pair[1]]['x'], graph.nodes[pair[1]]['y']) < max_distance:
+            if great_circle_vec(graph.nodes[pair[0]]['y'], graph.nodes[pair[0]]['x'], graph.nodes[pair[1]]['y'], graph.nodes[pair[1]]['x']) < max_distance:
                 filtered_list.append(pair)
 
         print(len(filtered_list), 'down from', len(pairs))
         return filtered_list
 
 
-def get_shortest_paths_distances(graph, pairs, edge_weight_name='distance'):
+def get_shortest_paths_distances(graph, pairs, edge_weight_name='length'):
     """
     Calculate shortest distance between each pair of nodes in a graph
 
@@ -204,7 +204,7 @@ def create_complete_graph(pair_weights, flip_weights=True):
     g = nx.Graph()
     for k, v in pair_weights.items():
         wt_i = -v if flip_weights else v
-        g.add_edge(k[0], k[1], **{'distance': v, 'weight': wt_i})
+        g.add_edge(k[0], k[1], **{'length': v, 'weight': wt_i})
     return g
 
 
@@ -241,13 +241,13 @@ def add_augmenting_path_to_graph(graph, min_weight_pairs, edge_weight_name='weig
     for pair in min_weight_pairs:
         graph_aug.add_edge(pair[0],
                            pair[1],
-                           **{'distance': nx.dijkstra_path_length(graph, pair[0], pair[1], weight=edge_weight_name),
+                           **{'length': nx.dijkstra_path_length(graph, pair[0], pair[1], weight=edge_weight_name),
                               'augmented': True}
                            )
     return graph_aug
 
 
-def create_eulerian_circuit(graph_augmented, graph_original, start_node=None, edge_weight='distance'):
+def create_eulerian_circuit(graph_augmented, graph_original, start_node=None, edge_weight='length'):
     """
     networkx.eulerian_circuit only returns the order in which we hit each node.  It does not return the attributes of the
     edges needed to complete the circuit.  This is necessary for the postman problem where we need to keep track of which
@@ -268,7 +268,7 @@ def create_eulerian_circuit(graph_augmented, graph_original, start_node=None, ed
     assert len(graph_augmented.edges()) == len(euler_circuit), 'graph and euler_circuit do not have equal number of edges.'
 
     for edge in euler_circuit:
-        aug_path = nx.shortest_path(graph_original, edge[0], edge[1], weight='distance')
+        aug_path = nx.shortest_path(graph_original, edge[0], edge[1], weight='length')
         edge_attr = graph_augmented[edge[0]][edge[1]][edge[2]]
         if not edge_attr.get('augmented'):
             yield edge + (edge_attr,)

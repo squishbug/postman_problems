@@ -64,7 +64,7 @@ def get_args():
     parser.add_argument('--edge_weight',
                         required=False,
                         type=str,
-                        default='distance',
+                        default='length',
                         help='Edge attribute used to specify the distance between nodes (optional).'
                              'Default is "distance".')
 
