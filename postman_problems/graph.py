@@ -2,6 +2,7 @@ import warnings
 import networkx as nx
 import pandas as pd
 import numpy as np
+import itertools
 
 
 def read_edgelist(edgelist_filename, keep_optional=False):
@@ -65,7 +66,7 @@ def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
     g_full = nx.MultiGraph(g_full) # convert Graph to MultiGraph (adds "keys")
 
     # every edge is "required"
-    for n1,n2,k in g_full.edges(keys=True):
+    for n1, n2, k in g_full.edges(keys=True):
         g_full.edges[(n1,n2,k)]["required"] = 1
         g_full.edges[(n1,n2,k)][edge_weight] = float(g_full.edges[(n1,n2,k)][edge_weight])
 
@@ -84,7 +85,7 @@ def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
                 float(g_full.nodes[pair[0]]['x']),
                 float(g_full.nodes[pair[0]]['y']),
                 float(g_full.nodes[pair[1]]['x']),
-                float(g_fulls.nodes[pair[1]]['y']))
+                float(g_full.nodes[pair[1]]['y']))
             g_full.add_edge(pair[0], pair[0], required=0, distance=dist)
 
     return g_full;
