@@ -2,7 +2,8 @@ import warnings
 import networkx as nx
 import pandas as pd
 import numpy as np
-
+import itertools
+from math import inf
 
 def read_edgelist(edgelist_filename, keep_optional=False):
     """
@@ -324,3 +325,99 @@ def assert_graph_is_connected(graph):
                                                         "this implementation of the RPP here which generalizes to the " \
                                                         "CPP."
     return True
+
+
+def is_connected(graph):
+    """
+    Ensure that the graph is still a connected graph after the optional edges are removed.
+
+    Args:
+        graph (networkx MultiGraph):
+
+    Returns:
+        True if graph is connected, False o.w.
+    """
+
+    return nx.algorithms.connected.is_connected(graph)
+
+
+
+
+def make_connected(graph, graph_full, edge_weight=None):
+    """
+    Graph must be a subgraph of graph_full. Add edges to graph to create a single connected component.
+    Please note: graph_full keys must all be 0. This is bad, I will try to fix it later...
+    Args:
+        graph (networkx MultiGraph)
+        graph_full (networkx MultiGraph)
+        edge_weight (str): name of the graph edge attribute to use as length measurement
+
+    Returns:
+        graph_conn (networkx MultiGraph)
+    """
+
+    # Test assumptions
+    assert nx.algorithms.connected.is_connected(graph_full), "Sorry, graph_full is not a connected -- please make sure the full graph is connected." # full graph must be connected, or this won't work
+    assert len([x for x in graph.edges() if x not in graph_full.edges()])==0, "Sorry, the graph is not a subgraph of graph_full!" # graph must be a subgraph of graph_full
+
+    # Connect all subgraph components
+    subgraphs =  list(enumerate(graph.subgraph(c) for c in nx.algorithms.connected.connected_components(graph)))
+    subgraph_pairs = itertools.combinations(subgraphs, 2)
+
+    subgraph_graph = nx.Graph() # each node is a subgraph of graph. This is to track the shortest path that connects all the subgraphs...
+
+    for G1, G2 in subgraph_pairs:
+        # prefer to connect odd nodes...
+        nodes1 = get_odd_nodes(G1[1])
+        if len(nodes1)==0:
+            nodes1 = G1[1].nodes()
+        nodes2 = get_odd_nodes(G2[1])
+        if len(nodes2)==0:
+            nodes2 = G2[1].nodes()
+
+        # track shortest path between nodes
+        path_segment = {}
+        for n1, n2 in itertools.product(nodes1,nodes2):
+            shortest_path_length = nx.algorithms.shortest_paths.generic.shortest_path_length(graph_full, n1, n2, edge_weight)
+            if shortest_path_length < path_segment.get('length', inf):
+                path_segment['length'] = shortest_path_length
+                path_segment['path'] = nx.algorithms.shortest_paths.generic.shortest_path(graph_full, n1, n2, edge_weight)
+
+        subgraph_graph.add_edge(G1[0], G2[0], **path_segment)
+
+    shortest_spanning_tree = nx.minimum_spanning_tree(subgraph_graph, 'length')
+    for p in shortest_spanning_tree.edges(data=True):
+        # each edge corresponds to a path in g_full that connects two disjoint subgraphs of graph
+        for n1, n2  in zip(p[2]["path"], p[2]["path"][1:]):
+            # iterate over the edges in the path and add them to graph
+            graph.add_edge(n1, n2, **graph_full[n1][n2][0]) # this is where graph_full keys HAVE to all be 0
+
+
+
+"""
+
+
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+from graph import read_edgelist
+from graph import create_networkx_graph_from_edgelist
+from graph import get_odd_nodes, get_shortest_paths_distances
+from graph import  create_required_graph
+from graph import make_connected
+df = read_edgelist('edgelist_B.csv', keep_optional=True)
+A = create_networkx_graph_from_edgelist(df)
+B = create_required_graph(A)
+#nx.draw(B); plt.show()
+#nx.draw(A); plt.show()
+make_connected(B,A,'distance')
+arc_wt = nx.get_edge_attributes(B,'distance')
+arc_wt2 = dict([(key[:2],val) for key,val in arc_wt.items()])
+npos = nx.spring_layout(B)
+nx.draw_networkx(B,pos=npos, node_size=450)
+nx.draw_networkx_edges(B, pos=npos)
+nx.draw_networkx_edge_labels(B, pos = npos, edge_labels=arc_wt2)
+plt.show()
+
+
+"""

@@ -7,7 +7,7 @@ import warnings
 #from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, create_required_graph, \
 from graph import read_edgelist, create_networkx_graph_from_edgelist, read_graphml, create_required_graph, \
     assert_graph_is_connected, get_odd_nodes, get_shortest_paths_distances, create_complete_graph, dedupe_matching, \
-    add_augmenting_path_to_graph, create_eulerian_circuit, filter_by_haversine_distance, great_circle_vec
+    add_augmenting_path_to_graph, create_eulerian_circuit, filter_by_haversine_distance, great_circle_vec, is_connected, make_connected
 
 
 logger_rpp = logging.getLogger('{0}.{1}'.format(__name__, 'rpp'))
@@ -95,7 +95,9 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
 
     logger_rpp.info('create required graph')
     g_req = create_required_graph(g_full)
-    assert_graph_is_connected(g_req)
+    #assert_graph_is_connected(g_req)
+    if not is_connected(g_req):
+        make_connected(g_req, g_full, edge_weight) # THIS STEP COULD BE SLOW
 
     logger_rpp.info('getting odd node pairs')
     odd_nodes = get_odd_nodes(g_req)
