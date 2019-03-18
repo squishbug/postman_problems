@@ -85,8 +85,8 @@ def read_graphml(filename, edge_weight="distance", max_degree_connect=None):
                 float(g_full.nodes[pair[0]]['x']),
                 float(g_full.nodes[pair[0]]['y']),
                 float(g_full.nodes[pair[1]]['x']),
-                float(g_fulls.nodes[pair[1]]['y']))
-            g_full.add_edge(pair[0], pair[0], required=0, distance=dist)
+                float(g_full.nodes[pair[1]]['y']))
+            g_full.add_edge(pair[0], pair[1], required=0, distance=dist)
 
     return g_full;
 
