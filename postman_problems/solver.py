@@ -5,7 +5,7 @@ import time
 import warnings
 
 #from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, create_required_graph, \
-from graph import read_edgelist, create_networkx_graph_from_edgelist, read_graphml, create_required_graph, \
+from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, read_graphml, create_required_graph, \
     assert_graph_is_connected, get_odd_nodes, get_shortest_paths_distances, create_complete_graph, dedupe_matching, \
     add_augmenting_path_to_graph, create_eulerian_circuit, filter_by_haversine_distance, great_circle_vec, is_connected, make_connected
 
