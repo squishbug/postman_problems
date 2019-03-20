@@ -92,6 +92,8 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
         for ii, edg in enumerate(g_full.edges(keys=True)):
             g_full.edges[edg]['id'] = str(ii)
 
+    # just to make sure g_full is a multigraph...
+    g_full = nx.MultiGraph(g_full)
 
     logger_rpp.info('create required graph')
     g_req = create_required_graph(g_full)
