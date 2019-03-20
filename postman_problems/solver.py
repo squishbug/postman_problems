@@ -87,6 +87,10 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
             #raise ValueError("If id is specified on edges of g_full it must be unique!")
             reset_ids = True
 
+    print("Graph loaded, ready to run rpp!")
+
+    print("Is g_full connected? {} {}".format(nx.is_connected(g_full), nx.algorithms.connected.is_connected(g_full)))
+
     # if needed, create new id
     if reset_ids:
         for ii, edg in enumerate(g_full.edges(keys=True)):

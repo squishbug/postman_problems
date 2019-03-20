@@ -357,7 +357,7 @@ def make_connected(graph, graph_full, edge_weight=None):
     """
 
     # Test assumptions
-    assert nx.algorithms.connected.is_connected(graph_full), "Sorry, graph_full is not a connected -- please make sure the full graph is connected." # full graph must be connected, or this won't work
+    assert nx.algorithms.connected.is_connected(graph_full), "Sorry, graph_full is not connected -- please make sure the full graph is connected." # full graph must be connected, or this won't work
     assert len([x for x in graph.edges() if x not in graph_full.edges()])==0, "Sorry, the graph is not a subgraph of graph_full!" # graph must be a subgraph of graph_full
 
     print("getting ready to make connected!")
