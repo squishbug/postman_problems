@@ -360,6 +360,8 @@ def make_connected(graph, graph_full, edge_weight=None):
     assert nx.algorithms.connected.is_connected(graph_full), "Sorry, graph_full is not a connected -- please make sure the full graph is connected." # full graph must be connected, or this won't work
     assert len([x for x in graph.edges() if x not in graph_full.edges()])==0, "Sorry, the graph is not a subgraph of graph_full!" # graph must be a subgraph of graph_full
 
+    print("getting ready to make connected!")
+
     # Connect all subgraph components
     subgraphs =  list(enumerate(graph.subgraph(c) for c in nx.algorithms.connected.connected_components(graph)))
     subgraph_pairs = itertools.combinations(subgraphs, 2)
@@ -392,7 +394,7 @@ def make_connected(graph, graph_full, edge_weight=None):
             # iterate over the edges in the path and add them to graph
             graph.add_edge(n1, n2, **graph_full[n1][n2][0]) # this is where graph_full keys HAVE to all be 0
 
-
+    print("done!")
 
 """
 
