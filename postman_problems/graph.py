@@ -295,7 +295,7 @@ def create_required_graph(graph):
         networkx MultiGraph with optional nodes and edges deleted
     """
 
-    graph_req = graph.copy()  # preserve original structure
+    graph_req = nx.MultiGraph(graph)  # create a copy of the graph, making sure it's in multigraph form
 
     # remove optional edges
     for e in list(graph_req.edges(data=True, keys=True)):
