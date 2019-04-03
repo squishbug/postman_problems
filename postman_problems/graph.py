@@ -134,6 +134,7 @@ def get_even_nodes(graph):
     """
     return _get_even_or_odd_nodes(graph, 0)
 
+
 def great_circle_vec(lat1, lng1, lat2, lng2, earth_radius=6371009): # meters
     phi1 = np.deg2rad(90 - lat1)
     phi2 = np.deg2rad(90 - lat2)
@@ -341,8 +342,6 @@ def is_connected(graph):
     return nx.algorithms.connected.is_connected(graph)
 
 
-
-
 def make_connected(graph, graph_full, edge_weight=None):
     """
     Graph must be a subgraph of graph_full. Add edges to graph to create a single connected component.
@@ -391,33 +390,3 @@ def make_connected(graph, graph_full, edge_weight=None):
         for n1, n2  in zip(p[2]["path"], p[2]["path"][1:]):
             # iterate over the edges in the path and add them to graph
             graph.add_edge(n1, n2, **graph_full[n1][n2][0]) # this is where graph_full keys HAVE to all be 0
-
-
-
-"""
-
-
-import networkx as nx
-import numpy as np
-import matplotlib.pyplot as plt
-from graph import read_edgelist
-from graph import create_networkx_graph_from_edgelist
-from graph import get_odd_nodes, get_shortest_paths_distances
-from graph import  create_required_graph
-from graph import make_connected
-df = read_edgelist('edgelist_B.csv', keep_optional=True)
-A = create_networkx_graph_from_edgelist(df)
-B = create_required_graph(A)
-#nx.draw(B); plt.show()
-#nx.draw(A); plt.show()
-make_connected(B,A,'distance')
-arc_wt = nx.get_edge_attributes(B,'distance')
-arc_wt2 = dict([(key[:2],val) for key,val in arc_wt.items()])
-npos = nx.spring_layout(B)
-nx.draw_networkx(B,pos=npos, node_size=450)
-nx.draw_networkx_edges(B, pos=npos)
-nx.draw_networkx_edge_labels(B, pos = npos, edge_labels=arc_wt2)
-plt.show()
-
-
-"""
