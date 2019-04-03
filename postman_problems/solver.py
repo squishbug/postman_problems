@@ -3,6 +3,7 @@ import logging
 import networkx as nx
 import time
 import warnings
+import pdb
 
 #from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, create_required_graph, \
 from postman_problems.graph import read_edgelist, create_networkx_graph_from_edgelist, read_graphml, create_required_graph, \
@@ -40,7 +41,6 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
     """
 
     logger_rpp.disabled = not verbose
-
     logger_rpp.info('initialize full graph')
 
     reset_ids = False
@@ -89,8 +89,13 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
 
     # if needed, create new id
     if reset_ids:
+        print("rpp: setting new ids.")
         for ii, edg in enumerate(g_full.edges(keys=True)):
             g_full.edges[edg]['id'] = str(ii)
+
+    # if start node is given, make sure it's a string!
+    if start_node is not None:
+        start_node = str(start_node)
 
     logger_rpp.info('create required graph')
     g_req = create_required_graph(g_full)
@@ -116,7 +121,20 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
     logger_rpp.info('get eulerian circuit route')
     circuit = list(create_eulerian_circuit(g_aug, g_full, start_node, edge_weight=edge_weight))
     end = time.time()
-    print('matching and augment time:', end - start)
+    print('rpp: matching and augment time:', end - start)
+
+    # Remove already visited nodes starting from the back (since we dont care about the "full circuit")
+    new_ending_idx = len(circuit) - 1;
+    for idx in range(0, len(circuit), 1):
+        end_offset_idx = len(circuit) - 1 - idx
+        if circuit[idx][0] == circuit[end_offset_idx][0] or circuit[idx][0] == circuit[end_offset_idx][1] or circuit[idx][1] == circuit[end_offset_idx][0] or circuit[idx][1] == circuit[end_offset_idx][1]:
+            new_ending_idx = end_offset_idx
+        else:
+            break
+
+    circuit = circuit[idx+1:]
+    print('Removed', idx, 'edges from the circuit start')
+
     return circuit, g_full
 
 
