@@ -38,6 +38,10 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
         The original graph is returned as well.  This is needed for visualization
     """
 
+    print("Running RPP solver!")
+
+    #pdb.set_trace()
+    
     logger_rpp.disabled = not verbose
     logger_rpp.info('initialize full graph')
 
@@ -81,9 +85,10 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
             reset_ids = True
         else:
             # id is already specified - ensure that it is unique
-            warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
-                          "Replacing id field with uniquely defined values.")
-            reset_ids = True
+            if len({edg[3]['id'] for edg in g_full.edges(keys=True, data=True)}) != g_full.number_of_edges():
+                warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
+                              "Replacing id field with uniquely defined values.")
+                reset_ids = True
 
     # if needed, create new id
     if reset_ids:
@@ -116,6 +121,9 @@ def rpp(edgelist_filename=None, start_node=None, edge_weight='distance', verbose
     g_aug = add_augmenting_path_to_graph(g_req, odd_matching)
 
     logger_rpp.info('get eulerian circuit route')
+
+    #pdb.set_trace();
+
     circuit = list(create_eulerian_circuit(g_aug, g_full, start_node, edge_weight=edge_weight))
     end = time.time()
     print('matching and augment time:', end - start)
@@ -160,15 +168,26 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
     """
     logger_cpp.disabled = not verbose
 
-    logger_rpp.info('initialize graph')
+    reset_ids = False;
+        
+    logger_cpp.info('initialize graph')
     if edgelist_filename is not None:
         # edgelist filename is given - load graph from file
         if graphml:
-            g = nx.read_graphml(edgelist_filename)
-            g = nx.MultiGraph(g) # convert Graph to MultiGraph (adds "keys")
-            # make sure edge weight is numeric
-            for edg in g.edges(keys=True):
-                g.edges[edg][edge_weight] = float(g.edges[edg][edge_weight])
+            g = read_graphml(edgelist_filename, edge_weight=edge_weight, max_degree_connect=max_degree_connect);
+
+            # make sure edge id exists and is unique
+            shared_keys = set.intersection(*[set(z.keys()) for x,y,z in list(g.edges(data=True))])
+            if 'id' not in shared_keys:
+                reset_ids = True
+            else:
+                # id is already specified - ensure that it is unique
+                if len({edg[3]['id'] for edg in g.edges(keys=True, data=True)}) != g.number_of_edges():
+                    warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
+                                  "Replacing id field with uniquely defined values.")
+                    #raise ValueError("If id is specified on edges of g_full it must be unique!")
+                    reset_ids = True
+
         else:
             el = read_edgelist(edgelist_filename, keep_optional=False)
             g = create_networkx_graph_from_edgelist(el)
@@ -182,15 +201,20 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
         shared_keys = set.intersection(*[set(z.keys()) for x,y,z in list(g.edges(data=True))])
         if edge_weight not in shared_keys:
             raise ValueError("g must include value for '{}' for every edge".format(edge_weight))
-        if id not in shared_keys:
+        if 'id' not in shared_keys:
             # create new id
-            for ii, edg in enumerate(g.edges(keys=True)):
-                g.edges[edg]['id'] = ii
+            reset_ids = True
         else:
             # id is already specified - ensure that it is unique
             if len({edg[3]['id'] for edg in g.edges(keys=True, data=True)}) != g.number_of_edges():
-                raise ValueError("If id is specified on edges of g it must be unique!")
+                warnings.warn("Edgelist contains field named 'id' but the values provided are not unique."
+                              "Replacing id field with uniquely defined values.")
+                reset_ids = True
 
+    # if needed, create new id
+    if reset_ids:
+        for ii, edg in enumerate(g.edges(keys=True)):
+            g.edges[edg]['id'] = str(ii)
 
     # if start node is given, make sure it's a string!
     if start_node is not None:
@@ -215,6 +239,9 @@ def cpp(edgelist_filename, start_node=None, edge_weight='distance', verbose=Fals
 
     print(len(get_odd_nodes(g)), ' odd nodes, now', len(get_odd_nodes(g_aug)), nx.is_connected(g_aug))
     logger_cpp.info('get eulerian circuit route')
+
+    #pdb.set_trace();
+    
     circuit = list(create_eulerian_circuit(g_aug, g, start_node))
     end = time.time()
     print('matching and augment time:', end - start)
